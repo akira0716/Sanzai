@@ -1,24 +1,26 @@
-import { useAuth } from './hooks/useAuth'
-import { useTransactions } from './hooks/useTransactions'
-import { AuthForm } from './components/AuthForm'
-import { Header } from './components/Header'
-import { TransactionForm } from './components/TransactionForm'
-import { TransactionList } from './components/TransactionList'
-import { SummaryCards } from './components/SummaryCards'
-import { CategoryChart } from './components/CategoryChart'
-import { ErrorAlert } from './components/ErrorAlert'
-import { Card, CardContent } from './components/ui/card'
+import { useAuth } from "./hooks/useAuth";
+import { useTransactions } from "./hooks/useTransactions";
+import { AuthForm } from "./components/AuthForm";
+import { Header } from "./components/Header";
+import { TransactionForm } from "./components/TransactionForm";
+import { TransactionList } from "./components/TransactionList";
+import { SummaryCards } from "./components/SummaryCards";
+import { CategoryChart } from "./components/CategoryChart";
+import { BudgetManager } from "./components/BudgetManager";
+import { ErrorAlert } from "./components/ErrorAlert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { Card, CardContent } from "./components/ui/card";
 
 export default function App() {
-  const { user, loading: authLoading } = useAuth()
-  const { 
-    transactions, 
-    loading: transactionsLoading, 
-    error, 
-    addTransaction, 
+  const { user, loading: authLoading } = useAuth();
+  const {
+    transactions,
+    loading: transactionsLoading,
+    error,
+    addTransaction,
     deleteTransaction,
-    refetch
-  } = useTransactions()
+    refetch,
+  } = useTransactions();
 
   // 認証の読み込み中
   if (authLoading) {
@@ -30,31 +32,33 @@ export default function App() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // 未認証の場合
   if (!user) {
-    return <AuthForm />
+    return <AuthForm />;
   }
 
-  const handleAddTransaction = async (transaction: Parameters<typeof addTransaction>[0]) => {
-    const result = await addTransaction(transaction)
+  const handleAddTransaction = async (
+    transaction: Parameters<typeof addTransaction>[0]
+  ) => {
+    const result = await addTransaction(transaction);
     if (result.success) {
       // 成功した場合、必要に応じて追加の処理
     } else {
-      alert(result.error || '取引の追加に失敗しました')
+      alert(result.error || "取引の追加に失敗しました");
     }
-  }
+  };
 
   const handleDeleteTransaction = async (id: string) => {
-    if (confirm('この取引を削除しますか？')) {
-      const result = await deleteTransaction(id)
+    if (confirm("この取引を削除しますか？")) {
+      const result = await deleteTransaction(id);
       if (!result.success) {
-        alert(result.error || '取引の削除に失敗しました')
+        alert(result.error || "取引の削除に失敗しました");
       }
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,18 +77,31 @@ export default function App() {
           <>
             <SummaryCards transactions={transactions} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <TransactionForm onAddTransaction={handleAddTransaction} />
-              <CategoryChart transactions={transactions} />
-            </div>
+            <Tabs defaultValue="transactions" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="transactions">取引管理</TabsTrigger>
+                <TabsTrigger value="budgets">予算管理</TabsTrigger>
+              </TabsList>
 
-            <TransactionList 
-              transactions={transactions} 
-              onDeleteTransaction={handleDeleteTransaction} 
-            />
+              <TabsContent value="transactions" className="space-y-6 mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <TransactionForm onAddTransaction={handleAddTransaction} />
+                  <CategoryChart transactions={transactions} />
+                </div>
+
+                <TransactionList
+                  transactions={transactions}
+                  onDeleteTransaction={handleDeleteTransaction}
+                />
+              </TabsContent>
+
+              <TabsContent value="budgets" className="mt-6">
+                <BudgetManager transactions={transactions} />
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>
     </div>
-  )
+  );
 }

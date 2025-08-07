@@ -13,6 +13,24 @@ export interface CategorySummary {
   count: number;
 }
 
+export interface Budget {
+  id: string;
+  userId: string;
+  category: string;
+  amount: number;
+  month: string; // YYYY-MM format
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetProgress {
+  budget: Budget;
+  spent: number;
+  remaining: number;
+  percentage: number;
+  isOverBudget: boolean;
+}
+
 export const INCOME_CATEGORIES = [
   '給与',
   'ボーナス',

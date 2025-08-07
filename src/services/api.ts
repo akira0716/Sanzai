@@ -1,4 +1,4 @@
-import type { Transaction } from "../types";
+import type { Transaction, Budget } from "../types";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 
 const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-aaa005ee`;
@@ -52,6 +52,30 @@ class ApiService {
 
   async deleteTransaction(id: string): Promise<{ success: boolean }> {
     return this.makeRequest(`/transactions/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getBudgets(): Promise<{ budgets: Budget[] }> {
+    return this.makeRequest("/budgets");
+  }
+
+  async setBudget(
+    category: string,
+    amount: number,
+    month: string
+  ): Promise<{ budget: Budget }> {
+    return this.makeRequest("/budgets", {
+      method: "POST",
+      body: JSON.stringify({ category, amount, month }),
+    });
+  }
+
+  async deleteBudget(
+    month: string,
+    category: string
+  ): Promise<{ success: boolean }> {
+    return this.makeRequest(`/budgets/${month}/${category}`, {
       method: "DELETE",
     });
   }
