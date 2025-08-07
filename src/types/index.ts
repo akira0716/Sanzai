@@ -31,6 +31,54 @@ export interface BudgetProgress {
   isOverBudget: boolean;
 }
 
+export interface MonthlyReport {
+  month: string;
+  totalIncome: number;
+  totalExpense: number;
+  netAmount: number;
+  incomeByCategory: CategorySummary[];
+  expenseByCategory: CategorySummary[];
+  transactionCount: number;
+  averageTransactionAmount: number;
+  topExpenseCategory: CategorySummary | null;
+  topIncomeCategory: CategorySummary | null;
+  dailyAverages: {
+    income: number;
+    expense: number;
+  };
+}
+
+export interface YearlyReport {
+  year: number;
+  totalIncome: number;
+  totalExpense: number;
+  netAmount: number;
+  monthlyData: {
+    month: string;
+    income: number;
+    expense: number;
+    net: number;
+  }[];
+  incomeByCategory: CategorySummary[];
+  expenseByCategory: CategorySummary[];
+  bestMonth: { month: string; net: number } | null;
+  worstMonth: { month: string; net: number } | null;
+  trends: {
+    incomeGrowth: number;
+    expenseGrowth: number;
+  };
+}
+
+export interface ComparisonReport {
+  current: MonthlyReport;
+  previous: MonthlyReport;
+  changes: {
+    income: { amount: number; percentage: number };
+    expense: { amount: number; percentage: number };
+    net: { amount: number; percentage: number };
+  };
+}
+
 export const INCOME_CATEGORIES = [
   '給与',
   'ボーナス',

@@ -7,6 +7,7 @@ import { TransactionList } from "./components/TransactionList";
 import { SummaryCards } from "./components/SummaryCards";
 import { CategoryChart } from "./components/CategoryChart";
 import { BudgetManager } from "./components/BudgetManager";
+import { ReportManager } from "./components/ReportManager";
 import { ErrorAlert } from "./components/ErrorAlert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Card, CardContent } from "./components/ui/card";
@@ -78,9 +79,10 @@ export default function App() {
             <SummaryCards transactions={transactions} />
 
             <Tabs defaultValue="transactions" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="transactions">取引管理</TabsTrigger>
                 <TabsTrigger value="budgets">予算管理</TabsTrigger>
+                <TabsTrigger value="reports">詳細レポート</TabsTrigger>
               </TabsList>
 
               <TabsContent value="transactions" className="space-y-6 mt-6">
@@ -97,6 +99,10 @@ export default function App() {
 
               <TabsContent value="budgets" className="mt-6">
                 <BudgetManager transactions={transactions} />
+              </TabsContent>
+
+              <TabsContent value="reports" className="mt-6">
+                <ReportManager transactions={transactions} />
               </TabsContent>
             </Tabs>
           </>
