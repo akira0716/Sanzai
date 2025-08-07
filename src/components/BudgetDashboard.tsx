@@ -38,12 +38,6 @@ export function BudgetDashboard({
     }).format(amount);
   };
 
-  const getProgressColor = (percentage: number, isOverBudget: boolean) => {
-    if (isOverBudget) return "bg-red-500";
-    if (percentage >= 80) return "bg-yellow-500";
-    return "bg-green-500";
-  };
-
   const getMonthOptions = () => {
     const current = new Date();
     const currentMonthStr = current.toISOString().slice(0, 7);
