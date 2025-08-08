@@ -7,6 +7,6 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
     // 警告が出る上限を1000KB（1MB）に設定
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
   },
 });
