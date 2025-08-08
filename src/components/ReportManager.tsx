@@ -123,10 +123,14 @@ export function ReportManager({ transactions }: ReportManagerProps) {
           const element =
             type === "monthly" ? monthlyPDFRef.current : yearlyPDFRef.current;
           if (element) {
+            console.log("PDF生成開始:", type, element);
             await generatePDFFromElement(element, {
               filename: `${type}-report-${dateStr}.pdf`,
               orientation: type === "yearly" ? "landscape" : "portrait",
             });
+            console.log("PDF生成完了");
+          } else {
+            throw new Error("PDF生成対象の要素が見つかりません");
           }
           break;
         }
@@ -142,7 +146,14 @@ export function ReportManager({ transactions }: ReportManagerProps) {
       }
     } catch (error) {
       console.error("エクスポートエラー:", error);
-      alert("レポートのエクスポートに失敗しました。");
+
+      // より詳細なエラーメッセージを表示
+      let errorMessage = "レポートのエクスポートに失敗しました。";
+      if (error instanceof Error) {
+        errorMessage += `\n詳細: ${error.message}`;
+      }
+
+      alert(errorMessage);
     } finally {
       setIsExporting(false);
     }
@@ -317,7 +328,17 @@ export function ReportManager({ transactions }: ReportManagerProps) {
       </Tabs>
 
       {/* PDF用の非表示要素 */}
-      <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+      <div
+        style={{
+          position: "fixed",
+          left: "-9999px",
+          top: "-9999px",
+          zIndex: -9999,
+          visibility: "hidden",
+          width: "210mm",
+          height: "auto",
+        }}
+      >
         <PDFMonthlyReportView
           ref={monthlyPDFRef}
           report={monthlyReport}
