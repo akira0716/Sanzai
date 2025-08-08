@@ -10,6 +10,94 @@ export interface PDFExportOptions {
   includeDetails?: boolean;
 }
 
+// 日本語フォントを正しく処理するための関数
+async function createJapanesePDF(
+  content: string,
+  filename: string
+): Promise<void> {
+  // HTML要素を作成してPDF生成
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  container.style.top = "-9999px";
+  container.style.width = "210mm";
+  container.style.backgroundColor = "#ffffff";
+  container.style.color = "#000000";
+  container.style.fontFamily = "Arial, sans-serif";
+  container.style.fontSize = "12px";
+  container.style.lineHeight = "1.4";
+  container.style.padding = "20mm";
+  container.style.whiteSpace = "pre-wrap";
+  container.style.wordWrap = "break-word";
+
+  // コンテンツを設定
+  container.textContent = content;
+
+  // DOMに追加
+  document.body.appendChild(container);
+
+  try {
+    // html2canvasでキャプチャ
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: false,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      width: container.scrollWidth,
+      height: container.scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      logging: false,
+    });
+
+    // PDF生成
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pdfWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 10;
+
+    // 最初のページを追加
+    pdf.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      10,
+      position,
+      imgWidth,
+      imgHeight
+    );
+    heightLeft -= pdfHeight - 20;
+
+    // 必要に応じてページを追加
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight + 10;
+      pdf.addPage();
+      pdf.addImage(
+        canvas.toDataURL("image/png"),
+        "PNG",
+        10,
+        position,
+        imgWidth,
+        imgHeight
+      );
+      heightLeft -= pdfHeight - 20;
+    }
+
+    pdf.save(filename);
+  } finally {
+    // 要素を削除
+    document.body.removeChild(container);
+  }
+}
+
 // oklchカラー関数を標準的なCSSカラーに変換する関数
 function convertOklchColors(element: HTMLElement): void {
   // Tailwind CSSのクラスを一時的に無効化
@@ -254,35 +342,108 @@ ${report.year}年
   return content;
 }
 
-export function downloadTextAsPDF(content: string, filename: string): void {
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
+export async function downloadTextAsPDF(
+  content: string,
+  filename: string
+): Promise<void> {
+  try {
+    await createJapanesePDF(content, filename);
+  } catch (error) {
+    console.error("簡易版PDF生成エラー:", error);
 
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const lineHeight = 6;
-  const margin = 20;
-  const maxLinesPerPage = Math.floor((pageHeight - margin * 2) / lineHeight);
-
-  const lines = content.split("\n");
-  let currentLine = 0;
-
-  while (currentLine < lines.length) {
-    if (currentLine > 0) {
-      pdf.addPage();
-    }
-
-    const endLine = Math.min(currentLine + maxLinesPerPage, lines.length);
-    const pageLines = lines.slice(currentLine, endLine);
-
-    pageLines.forEach((line, index) => {
-      pdf.text(line, margin, margin + (index + 1) * lineHeight);
+    // フォールバック: 英数字変換版を使用
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
     });
 
-    currentLine = endLine;
-  }
+    pdf.setFont("helvetica");
+    pdf.setFontSize(10);
 
-  pdf.save(filename);
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const lineHeight = 6;
+    const margin = 20;
+    const maxLinesPerPage = Math.floor((pageHeight - margin * 2) / lineHeight);
+
+    const lines = content.split("\n");
+    let currentLine = 0;
+
+    while (currentLine < lines.length) {
+      if (currentLine > 0) {
+        pdf.addPage();
+      }
+
+      const endLine = Math.min(currentLine + maxLinesPerPage, lines.length);
+      const pageLines = lines.slice(currentLine, endLine);
+
+      pageLines.forEach((line, index) => {
+        const convertedLine = convertJapaneseToEnglish(line);
+        pdf.text(convertedLine, margin, margin + (index + 1) * lineHeight);
+      });
+
+      currentLine = endLine;
+    }
+
+    pdf.save(filename);
+  }
+}
+
+// 日本語を英数字に変換する関数
+function convertJapaneseToEnglish(text: string): string {
+  const conversions: { [key: string]: string } = {
+    家計簿: "Household Account",
+    月別: "Monthly",
+    年別: "Yearly",
+    レポート: "Report",
+    収支: "Balance",
+    サマリー: "Summary",
+    総収入: "Total Income",
+    総支出: "Total Expense",
+    取引: "Transaction",
+    統計: "Statistics",
+    件数: "Count",
+    平均: "Average",
+    日平均: "Daily Average",
+    収入: "Income",
+    支出: "Expense",
+    カテゴリ: "Category",
+    内訳: "Breakdown",
+    前月比: "vs Previous Month",
+    前年比: "vs Previous Year",
+    成長率: "Growth Rate",
+    最高: "Best",
+    最低: "Worst",
+    月: "Month",
+    年: "Year",
+    年間: "Annual",
+    月間: "Monthly",
+    トレンド: "Trend",
+    一覧: "List",
+    生成日時: "Generated",
+    円: "JPY",
+    件: "items",
+    食費: "Food",
+    交通費: "Transportation",
+    光熱費: "Utilities",
+    通信費: "Communication",
+    娯楽費: "Entertainment",
+    医療費: "Medical",
+    教育費: "Education",
+    衣服費: "Clothing",
+    住居費: "Housing",
+    その他: "Others",
+    給料: "Salary",
+    ボーナス: "Bonus",
+    副業: "Side Job",
+    投資: "Investment",
+    臨時収入: "Extra Income",
+  };
+
+  let convertedText = text;
+  Object.entries(conversions).forEach(([japanese, english]) => {
+    convertedText = convertedText.replace(new RegExp(japanese, "g"), english);
+  });
+
+  return convertedText;
 }

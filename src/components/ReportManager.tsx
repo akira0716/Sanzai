@@ -140,7 +140,7 @@ export function ReportManager({ transactions }: ReportManagerProps) {
             type === "monthly"
               ? generateMonthlyReportPDF(monthlyReport)
               : generateYearlyReportPDF(yearlyReport);
-          downloadTextAsPDF(textContent, `${type}-report-${dateStr}.pdf`);
+          await downloadTextAsPDF(textContent, `${type}-report-${dateStr}.pdf`);
           break;
         }
       }
