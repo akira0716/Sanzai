@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
@@ -9,9 +9,22 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { MonthlyReportView } from "./MonthlyReportView";
 import { YearlyReportView } from "./YearlyReportView";
-import { FileText, Download, Calendar } from "lucide-react";
+import { PDFMonthlyReportView, PDFYearlyReportView } from "./PDFReportView";
+import {
+  FileText,
+  Download,
+  Calendar,
+  FileIcon,
+  FileSpreadsheet,
+} from "lucide-react";
 import type { Transaction } from "../types";
 import {
   generateMonthlyReport,
@@ -19,6 +32,12 @@ import {
   generateComparisonReport,
   getPreviousMonth,
 } from "../utils/reportUtils";
+import {
+  generatePDFFromElement,
+  generateMonthlyReportPDF,
+  generateYearlyReportPDF,
+  downloadTextAsPDF,
+} from "../utils/pdfUtils";
 
 interface ReportManagerProps {
   transactions: Transaction[];
@@ -32,6 +51,11 @@ export function ReportManager({ transactions }: ReportManagerProps) {
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [showComparison, setShowComparison] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // PDF用の非表示要素への参照
+  const monthlyPDFRef = useRef<HTMLDivElement>(null);
+  const yearlyPDFRef = useRef<HTMLDivElement>(null);
 
   // 利用可能な月と年を取得
   const getAvailableMonths = () => {
@@ -67,22 +91,61 @@ export function ReportManager({ transactions }: ReportManagerProps) {
     ? generateComparisonReport(transactions, selectedMonth, previousMonth)
     : undefined;
 
-  const handleExportReport = (type: "monthly" | "yearly") => {
-    // 将来のCSV/PDF出力機能の基盤
-    const reportData = type === "monthly" ? monthlyReport : yearlyReport;
-    const jsonData = JSON.stringify(reportData, null, 2);
+  const handleExportReport = async (
+    type: "monthly" | "yearly",
+    format: "json" | "pdf" | "text"
+  ) => {
+    if (isExporting) return;
 
-    const blob = new Blob([jsonData], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${type}-report-${
-      type === "monthly" ? selectedMonth : selectedYear
-    }.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setIsExporting(true);
+
+    try {
+      const reportData = type === "monthly" ? monthlyReport : yearlyReport;
+      const dateStr =
+        type === "monthly" ? selectedMonth : selectedYear.toString();
+
+      switch (format) {
+        case "json": {
+          const jsonData = JSON.stringify(reportData, null, 2);
+          const blob = new Blob([jsonData], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${type}-report-${dateStr}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          break;
+        }
+
+        case "pdf": {
+          const element =
+            type === "monthly" ? monthlyPDFRef.current : yearlyPDFRef.current;
+          if (element) {
+            await generatePDFFromElement(element, {
+              filename: `${type}-report-${dateStr}.pdf`,
+              orientation: type === "yearly" ? "landscape" : "portrait",
+            });
+          }
+          break;
+        }
+
+        case "text": {
+          const textContent =
+            type === "monthly"
+              ? generateMonthlyReportPDF(monthlyReport)
+              : generateYearlyReportPDF(yearlyReport);
+          downloadTextAsPDF(textContent, `${type}-report-${dateStr}.pdf`);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error("エクスポートエラー:", error);
+      alert("レポートのエクスポートに失敗しました。");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const formatMonthOption = (monthStr: string) => {
@@ -147,14 +210,38 @@ export function ReportManager({ transactions }: ReportManagerProps) {
                   >
                     {showComparison ? "比較を非表示" : "前月比較を表示"}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleExportReport("monthly")}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    エクスポート
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isExporting}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {isExporting ? "エクスポート中..." : "エクスポート"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        onClick={() => handleExportReport("monthly", "pdf")}
+                      >
+                        <FileIcon className="h-4 w-4 mr-2" />
+                        PDF形式 (詳細版)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExportReport("monthly", "text")}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        PDF形式 (簡易版)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExportReport("monthly", "json")}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        JSON形式
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </CardContent>
@@ -193,14 +280,34 @@ export function ReportManager({ transactions }: ReportManagerProps) {
                   </Select>
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleExportReport("yearly")}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  エクスポート
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={isExporting}>
+                      <Download className="h-4 w-4 mr-2" />
+                      {isExporting ? "エクスポート中..." : "エクスポート"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      onClick={() => handleExportReport("yearly", "pdf")}
+                    >
+                      <FileIcon className="h-4 w-4 mr-2" />
+                      PDF形式 (詳細版)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExportReport("yearly", "text")}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      PDF形式 (簡易版)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExportReport("yearly", "json")}
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      JSON形��
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
           </Card>
@@ -208,6 +315,16 @@ export function ReportManager({ transactions }: ReportManagerProps) {
           <YearlyReportView report={yearlyReport} />
         </TabsContent>
       </Tabs>
+
+      {/* PDF用の非表示要素 */}
+      <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+        <PDFMonthlyReportView
+          ref={monthlyPDFRef}
+          report={monthlyReport}
+          comparison={comparisonReport}
+        />
+        <PDFYearlyReportView ref={yearlyPDFRef} report={yearlyReport} />
+      </div>
     </div>
   );
 }
